@@ -1,45 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-PSD Maker - turn a photo into an editable .psd file (real layers, names, groups, blend modes).
-
-Double-click PSD_Maker.pyw (or run this file with no arguments) to open the window.
-
-Requirements:  pip install pillow numpy            (or run install_dependencies.py)
-Optional:      opencv-python  -> subject / lines / better colors / logo replacement
-               scikit-learn   -> faster color clustering
-               rembg          -> high-quality subject cut-out
-
-QUICK USE
-  python psd_maker.py                       -> opens the window
-  python psd_maker.py photo.jpg             -> PSD only (1 layer)
-  python psd_maker.py photo.jpg -m all      -> full split into groups
-  python psd_maker.py *.jpg -m colors -k 8  -> several photos at once
-
-METHODS (-m, can be combined with commas:  -m subject,tones)
-  flat       PSD only, one layer                              (default)
-  subject    cut-out Subject + Background
-  tones      Shadows / Midtones / Highlights (luminosity masks)
-  colors     k layers, one per dominant color (-k)
-  edges      Photo + Lines layer (outlines, multiply)
-  channels   Red / Green / Blue separated (Screen blend)
-  frequency  Color (low freq.) + Texture (high freq., Linear Light)
-  all        subject + tones + colors + edges, each in its own group
-             (only the first group is visible; switch the others on when you need them)
-Note: channels and frequency must be used on their own.
-
-REPLACE A LOGO / IMAGE (no manual selection)
-  python psd_maker.py scene.jpg --replace old_logo.png new_logo.png
-  - old_logo = a photo/crop of what you want to change: the tool finds ALL copies of it
-    in the scene by itself (different sizes, rotated or in perspective)
-  - new_logo = the image to put in its place (PNG with transparency recommended)
-  - the PSD contains: Photo + a 'Replacements' group with, for every copy found, a
-    'Cleanup' layer (old logo erased) and a 'New image' layer you can move around
-  - repeatable: --replace a.png b.png --replace c.png d.png
-  - nothing found? lower --threshold (default 0.62); too many hits? raise it
-  - --stretch fills the whole area (ignores proportions), --no-clean skips the cleanup
-  Needs opencv-python.
-"""
 import argparse
 import importlib.util
 import os
@@ -74,9 +32,7 @@ Image.MAX_IMAGE_PIXELS = None
 NORM, MUL, SCRN, LLIT = b"norm", b"mul ", b"scrn", b"lLit"
 
 
-# ----------------------------------------------------------------------------
 #  Model: layers and groups (lists always run from BOTTOM to TOP)
-# ----------------------------------------------------------------------------
 class Layer:
     def __init__(self, name, rgb, alpha=None, blend=NORM, opacity=100, visible=True):
         self.name = name
@@ -97,9 +53,7 @@ class Group:
         self.name, self.children, self.visible, self.opened = name, children, visible, opened
 
 
-# ----------------------------------------------------------------------------
 #  PSD writer (Adobe format v1, RGB 8-bit, per-layer alpha channel)
-# ----------------------------------------------------------------------------
 def _pascal(name):
     b = name.encode("latin-1", "replace")[:255]
     s = bytes([len(b)]) + b
@@ -206,9 +160,7 @@ def composite(items, h, w):
     return np.clip(out + 0.5, 0, 255).astype(np.uint8)
 
 
-# ----------------------------------------------------------------------------
 #  Decomposition methods
-# ----------------------------------------------------------------------------
 def _lum(img):
     f = img.astype(np.float32)
     return (f[..., 0] * 0.299 + f[..., 1] * 0.587 + f[..., 2] * 0.114) / 255.0
@@ -406,9 +358,7 @@ def build_items(img, methods, with_original=True, **opts):
     return items, notes
 
 
-# ----------------------------------------------------------------------------
 #  Logo / image replacement
-# ----------------------------------------------------------------------------
 def _load_rgba(path):
     return np.asarray(ImageOps.exif_transpose(Image.open(path)).convert("RGBA"))
 
@@ -585,9 +535,7 @@ def apply_replacements(img, pairs, threshold=0.62, stretch=False, clean=True, lo
     return layers
 
 
-# ----------------------------------------------------------------------------
 #  Converting a file
-# ----------------------------------------------------------------------------
 def load_image(path):
     im = ImageOps.exif_transpose(Image.open(path))
     if im.mode in ("RGBA", "LA", "P", "PA"):
@@ -629,9 +577,7 @@ def _count(items):
     return sum(_count(i.children) if isinstance(i, Group) else 1 for i in items)
 
 
-# ----------------------------------------------------------------------------
 #  Graphical interface (tkinter)
-# ----------------------------------------------------------------------------
 def run_gui():
     import queue
     import threading
